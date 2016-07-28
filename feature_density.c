@@ -209,12 +209,13 @@ int main(int argc, char *argv[]) {
   srand(time(NULL));
 
   if(argc < 6) {
-    printf("Usage: feature_density <BAM> <feature bandwidth> <std threshold> <assay {d,a,c,f}> <output BED> [output WIG]\n");
+    printf("Usage: feature_density <BAM> <feature length> <std threshold> <assay {d,a,c,f}> <output BED> [output WIG]\n");
     printf("Not enough arguments.\n");
     return -1;
   }
   char *bam_file = argv[1];
-  int b = atoi(argv[2]); // feature bandwidth (default: 600)
+  int feature_length = atoi(argv[2]); // feature length (default: 600)
+  int b = feature_length / 6.0; // bandwidth - this is the way it's done in F-seq
   int std_threshold = atoi(argv[3]);
   char assay = argv[4][0];
   char *output_bed = argv[5];
