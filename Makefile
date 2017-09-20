@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-lhts
+CFLAGS=-lhts -std=c99
 
 OBJECTS = dc hc af td ex bf fd
 

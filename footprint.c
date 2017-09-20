@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <limits.h>
-#include <htslib/sam.h>
-#include <htslib/khash.h>
+#include "htslib/htslib/sam.h"
+#include "htslib/htslib/khash.h"
 #include "klib/kvec.h"
 #include <float.h>
 #include <time.h>

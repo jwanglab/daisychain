@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <htslib/sam.h>
-#include <htslib/khash.h>
-#include <htslib/kseq.h>
+#include "htslib/htslib/sam.h"
+#include "htslib/htslib/khash.h"
+#include "htslib/htslib/kseq.h"
 
 /*
  * dc.c

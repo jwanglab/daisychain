@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include "klib/kvec.h"
-#include <htslib/sam.h>
-#include <htslib/khash.h>
+#include "htslib/htslib/sam.h"
+#include "htslib/htslib/khash.h"
 
 /*
  * bedfilter.c
@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
   fp = fopen(exclude_bed, "r");
   char* line = NULL;
   size_t len = 0;
-  ssize_t chr_read;
+  int chr_read;
 
   // all of these must be allocated or sscanf will segfault
   char chrom[100], remainder[1000];

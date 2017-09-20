@@ -36,9 +36,11 @@ Tools
 
 Dependencies
 ------------
-klib (in this directory): http://github.com/lh3/klib
+Both should be cloned and built in *this* directory
 
-htslib (in GCC library path): http://github.com/samtools/htslib
+http://github.com/lh3/klib
+
+http://github.com/samtools/htslib
 
 
 Installation

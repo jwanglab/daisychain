@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <htslib/sam.h>
-#include <htslib/khash.h>
+#include "htslib/htslib/sam.h"
+#include "htslib/htslib/khash.h"
 
 /*
  * tagdensity.c
@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
   fp = fopen(motif_bed, "r");
   char* line = NULL;
   size_t len = 0;
-  ssize_t chr_read;
+  int chr_read;
 
   FILE* fout;
   fout = fopen(output_csv, "w");

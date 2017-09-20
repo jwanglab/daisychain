@@ -2,10 +2,10 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <limits.h>
-#include <htslib/sam.h>
-#include <htslib/khash.h>
+#include "htslib/htslib/sam.h"
+#include "htslib/htslib/khash.h"
+#include "htslib/htslib/ksort.h"
 #include "klib/kvec.h"
-#include <htslib/ksort.h>
 #include <float.h>
 #include <time.h>
 #include <math.h>
@@ -22,6 +22,14 @@
  *   but this feature density estimation can be used
  *   for assays including ChIP, FAIRE, and ATAC
 */
+
+#ifndef M_PI
+  #define M_PI 3.14159265358979323846
+#endif
+
+#ifndef M_E
+  #define M_E 2.718281828459045
+#endif
 
 double PI2 = sqrt(M_PI * 2);
 
