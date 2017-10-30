@@ -36,11 +36,9 @@ Tools
 
 Dependencies
 ------------
-Both should be cloned and built in *this* directory
+klib (headers only, in this directory): http://github.com/attractivechaos/klib
 
-http://github.com/lh3/klib
-
-http://github.com/samtools/htslib
+htslib (on system): http://github.com/samtools/htslib
 
 
 Installation
