@@ -297,8 +297,8 @@ int main(int argc, char *argv[]) {
 
       // read is not the same length
       if (qlen != read_len) {
-        fprintf(stderr, "Read at %i:%i is %ibp, should be %ibp\n", tid, pos, qlen, read_len);
-        continue;
+        fprintf(stderr, "Warning: read at %i:%i is %ibp, we will pretend it's %ibp\n", tid, pos, qlen, read_len);
+        //continue;
       }
 
       if (aln->core.flag & 4) { // unmapped
