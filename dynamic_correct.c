@@ -4,6 +4,8 @@
 #include "htslib/htslib/sam.h"
 #include "htslib/htslib/khash.h"
 #include "htslib/htslib/kseq.h"
+#include <getopt.h>
+#include <string.h>
 
 /*
  * dc.c
@@ -107,31 +109,110 @@ char* u8bin(uint8_t d) {
 }
 
 
-float compute_weight(uint8_t **ref_array, int tid, int pos, float **weights, int32_t read_len, char rev) {
+float compute_weight(uint8_t **ref_array, int rlen, int tid, int pos, float **weights, int32_t read_len, char rev) {
   float weight = 1;
   int i;
   for (i = -1 * READ_MARGIN; i < read_len + READ_MARGIN; i++) {
     if (!rev) {
-      weight *= weights[i + READ_MARGIN][tohex(ref_array, tid, pos + i)];
+      if (pos + i >= 0 && pos + i < rlen)
+        weight *= weights[i + READ_MARGIN][tohex(ref_array, tid, pos + i)];
     } else {
-      weight *= weights[i + READ_MARGIN][rc(tohex(ref_array, tid, pos - i))];
+      if (pos - i >= 0 && pos - i < rlen)
+        weight *= weights[i + READ_MARGIN][rc(tohex(ref_array, tid, pos - i))];
     }
   }
   return weight;
 }
 
+void version() {
+  printf("dc version 0.1\n");
+}
+
+void usage() {
+  printf("Usage: dc [options]\n");
+  printf("Options:\n");
+  printf("  -b: Aligned BAM file\n");
+  printf("  -r: Reference FASTA/Q[.gz]\n");
+  printf("  -o: Output BAM\n");
+  printf("  -l: Read length (default: 150)\n");
+  printf("  -v, --verbose: verbose\n");
+  printf("  -h, --help: show this\n");
+  printf("  --version: show version information\n");
+}
+
+static struct option long_options[] = {
+// if these are the same as a single-character option, put that character in the 4th field instead of 0
+  { "verbose", no_argument, 0, 'v' },
+  { "help",    no_argument, 0, 'h' },
+  { "version", no_argument, 0, 0 },
+  { 0, 0, 0, 0}
+};
 
 int main(int argc, char *argv[]) {
-
-  if(argc < 4) {
-    printf("Usage: dc <BAM> <reference FASTA> <output BAM>\n");
-    printf("Not enough arguments.\n");
-    return -1;
-  }
+  int verbose = 0;
   char *bam_file = argv[1];
   char *ref_fasta = argv[2];
   char *output_bam = argv[3];
+  int32_t read_len = 150;
 
+  int opt, long_idx;
+  opterr = 0;
+  while ((opt = getopt_long(argc, argv, "b:r:o:l:vh", long_options, &long_idx)) != -1) {
+    switch (opt) {
+      case 'b':
+        bam_file = optarg;
+        break;
+      case 'r':
+        ref_fasta = optarg;
+        break;
+      case 'o':
+        output_bam = optarg;
+        break;
+      case 'l':
+        read_len = atoi(optarg);
+        break;
+      case 'v':
+        verbose = 1;
+        break;
+      case 'h':
+        usage();
+        return 0;
+        break;
+      case '?':
+        if (optopt == 'b' || optopt == 'r' || optopt == 'o' || optopt == 'l')
+          fprintf(stderr, "Option -%c requires an argument.\n", optopt);
+        else if (isprint (optopt))
+          fprintf(stderr, "Unknown option `-%c'.\n", optopt);
+        else
+          fprintf(stderr, "Unknown option character `\\x%x'.\n", optopt);
+        return 1;
+      case 0:
+        // as long as all the long arguments have characters too, I don't think this section will be used
+        if (long_idx == 0) verbose = 1; // --verbose
+        else if (long_idx == 1) {usage(); return 0;} // --help
+        else if (long_idx == 2) {version(); return 0;} // --version
+        break;
+      default:
+        usage();
+        return 1;
+    }
+  }
+
+  if(bam_file == NULL) {
+    fprintf(stderr, "-b BAM file is required\n");
+    usage();
+    return 1;
+  }
+  if(ref_fasta == NULL) {
+    fprintf(stderr, "-r ref FASTA is required\n");
+    usage();
+    return 1;
+  }
+  if(output_bam == NULL) {
+    fprintf(stderr, "-o output BAM file is required\n");
+    usage();
+    return 1;
+  }
 
   // load FASTA file
   // convert into fw and rv arrays of 2-byte hexamer values
@@ -217,7 +298,6 @@ int main(int argc, char *argv[]) {
 
   // get the first read to get read length
   ret_val = sam_read1(bam, header, aln);
-  int32_t read_len = aln->core.l_qseq;
   size_t bias_window_size = read_len + READ_MARGIN * 2;
 
   printf("Read length: %i\n", read_len);
@@ -272,7 +352,7 @@ int main(int argc, char *argv[]) {
 
     // keep track of individual allele counts
     double** allele_counts = malloc(sizeof(double*) * bias_window_size);
-    for (i = 0; i < 1000; i++) {
+    for (i = 0; i < bias_window_size; i++) {
       allele_counts[i] = calloc(4, sizeof(double));
     }
     uint8_t al;
@@ -297,12 +377,19 @@ int main(int argc, char *argv[]) {
 
       // read is not the same length
       if (qlen != read_len) {
-        fprintf(stderr, "Warning: read at %i:%i is %ibp, we will pretend it's %ibp\n", tid, pos, qlen, read_len);
+        //fprintf(stderr, "Warning: read at %i:%i is %ibp, we will pretend it's %ibp\n", tid, pos, qlen, read_len);
         //continue;
+      }
+      if(verbose) {
+        fprintf(stderr, "Got read at %d: %d of len %d.\n", tid, pos, qlen);
       }
 
       if (aln->core.flag & 4) { // unmapped
         continue;
+      }
+
+      if(verbose) {
+        fprintf(stderr, "  is mapped.\n");
       }
 
       // warn about too-high coverage, possible artifacts
@@ -322,7 +409,13 @@ int main(int argc, char *argv[]) {
 
       uint32_t hex, al;
       if (!bam_is_rev(aln)) {
-        float weight = compute_weight(ref_array, tid, pos, weights, read_len, 0);
+        if(verbose) {
+          fprintf(stderr, "  is fw.\n");
+        }
+        float weight = compute_weight(ref_array, rlen_array[tid], tid, pos, weights, read_len, 0);
+        if(verbose) {
+          fprintf(stderr, "  weight is %f.\n", weight);
+        }
 
         // this loop could be more efficient if it kept the hex state and not recompute it every time
         int range_start = (pos >= READ_MARGIN ? pos - READ_MARGIN : 0);
@@ -344,7 +437,13 @@ int main(int argc, char *argv[]) {
           allele_counts[i - range_start][al] += weight;
         }
       } else {
-        float weight = compute_weight(ref_array, tid, endpos-5, weights, read_len, 1);
+        if(verbose) {
+          fprintf(stderr, "  is rv.\n");
+        }
+        float weight = compute_weight(ref_array, rlen_array[tid], tid, endpos-5, weights, read_len, 1);
+        if(verbose) {
+          fprintf(stderr, "  weight is %f.\n", weight);
+        }
 
         // this loop could be more efficient if it kept the hex state and not recompute and RC it every time
         int range_start = (endpos - read_len + 1 >= READ_MARGIN ? endpos - read_len + 1 - READ_MARGIN : 0);
@@ -372,6 +471,9 @@ int main(int argc, char *argv[]) {
       }
 
       ct++;
+      if(verbose) {
+        fprintf(stderr, "  done, now %d total reads.\n", ct);
+      }
       /*
       if (ct > 10) {
         break;
@@ -379,17 +481,25 @@ int main(int argc, char *argv[]) {
       */
     } while ((ret_val = sam_read1(bam, header, aln)) >= 0);
 
+    if(verbose) {
+      fprintf(stderr, "End of first round, closing BAM\n");
+    }
 
     /*
      * Clean up this pass through the BAM file
      */
 
+    bam_destroy1(aln);
+    bam_hdr_destroy(header);
     ret_val = sam_close(bam);
     if (ret_val < 0) {
       fprintf(stderr, "Error closing input BAM.\n");
       return -1;
     }
-    bam_hdr_destroy(header);
+
+    if(verbose) {
+      fprintf(stderr, "Computing weights\n");
+    }
 
 
     /*
@@ -411,6 +521,11 @@ int main(int argc, char *argv[]) {
      */
     // baseline will be computed the first time through then stay the same
     if (iter == 0) {
+
+      if(verbose) {
+        fprintf(stderr, "Computing baseline\n");
+      }
+
       for (i = 0; i < 4; i++) baseline_allele_counts[i] = 0;
       for (i = 0; i < 4096; i++) {
         baseline_allele_counts[(i >> 10) & 3] += background_counts[i];
@@ -519,9 +634,9 @@ int main(int argc, char *argv[]) {
       bam_aux_append(aln, "XW", 'f', sizeof(float), (uint8_t*)&unmapped_weight);
     } else {
       if (!bam_is_rev(aln)) { // fw
-        weight = compute_weight(ref_array, tid, pos, weights, read_len, 0);
+        weight = compute_weight(ref_array, rlen_array[tid], tid, pos, weights, read_len, 0);
       } else { // rv
-        weight = compute_weight(ref_array, tid, endpos-5, weights, read_len, 1);
+        weight = compute_weight(ref_array, rlen_array[tid], tid, endpos-5, weights, read_len, 1);
       }
       bam_aux_append(aln, "XW", 'f', sizeof(float), (uint8_t*)&weight);
     }
